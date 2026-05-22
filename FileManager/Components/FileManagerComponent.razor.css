@@ -1,0 +1,521 @@
+/* FileManager.razor.css
+   Scoped styles for the FileManager component.
+   All colours, fonts, and spacing use CSS custom properties so the host
+   application can theme the component by overriding variables on the
+   wrapper element:
+
+       <div style="--fm-accent: #0070f3; --fm-font-size: 13px;">
+           <FileManager Provider="@p" />
+       </div>
+
+   ── Available CSS custom properties ────────────────────────────────────
+
+   Layout
+   --fm-font-family          Font for all text inside the component.
+   --fm-font-size            Base font size.
+   --fm-border-radius        Border radius for panels, modals, buttons.
+   --fm-transition           Default transition duration.
+
+   Colours — surfaces
+   --fm-bg                   Root background.
+   --fm-panel-bg             Left volume panel background.
+   --fm-main-bg              Main area background.
+   --fm-toolbar-bg           Toolbar background.
+   --fm-header-bg            Column header background.
+
+   Colours — borders
+   --fm-border               Primary border colour.
+   --fm-splitter-bg          Splitter handle colour.
+   --fm-splitter-hover-bg    Splitter handle on hover.
+
+   Colours — text
+   --fm-text                 Primary text colour.
+   --fm-text-muted           Secondary / muted text.
+   --fm-text-on-accent       Text on accent-coloured backgrounds.
+
+   Colours — interaction
+   --fm-accent               Accent / primary action colour.
+   --fm-accent-hover         Accent on hover.
+   --fm-row-hover-bg         File row hover background.
+   --fm-row-selected-bg      Selected row background.
+   --fm-row-selected-text    Selected row text colour.
+   --fm-row-cut-opacity      Opacity for cut items.
+   --fm-volume-selected-bg   Selected volume background.
+
+   Colours — buttons
+   --fm-btn-bg               Secondary button background.
+   --fm-btn-bg-hover         Secondary button hover background.
+   --fm-btn-border           Button border colour.
+   --fm-danger               Danger / delete button colour.
+   --fm-danger-hover         Danger button hover colour.
+
+   Colours — modal
+   --fm-modal-backdrop-bg    Modal backdrop colour (rgba).
+   --fm-modal-bg             Modal dialog background.
+   --fm-modal-shadow         Modal box shadow.
+
+   Colours — misc
+   --fm-busy-backdrop-bg     Busy overlay backdrop (rgba).
+   --fm-input-border         Input field border.
+   --fm-input-focus-border   Input field focused border.
+   ─────────────────────────────────────────────────────────────────────── */
+
+/* ── Custom property defaults ──────────────────────────────────────────── */
+.fm-root {
+    --fm-font-family:         -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --fm-font-size:           14px;
+    --fm-border-radius:       6px;
+    --fm-transition:          0.15s ease;
+
+    --fm-bg:                  #ffffff;
+    --fm-panel-bg:            #f5f5f5;
+    --fm-main-bg:             #ffffff;
+    --fm-toolbar-bg:          #fafafa;
+    --fm-header-bg:           #f0f0f0;
+
+    --fm-border:              #e0e0e0;
+    --fm-splitter-bg:         #d0d0d0;
+    --fm-splitter-hover-bg:   #a0a0a0;
+
+    --fm-text:                #1a1a1a;
+    --fm-text-muted:          #6b6b6b;
+    --fm-text-on-accent:      #ffffff;
+
+    --fm-accent:              #0057b8;
+    --fm-accent-hover:        #003d85;
+    --fm-row-hover-bg:        #f0f7ff;
+    --fm-row-selected-bg:     #cce0ff;
+    --fm-row-selected-text:   #003d85;
+    --fm-row-cut-opacity:     0.45;
+    --fm-volume-selected-bg:  #ddeeff;
+
+    --fm-btn-bg:              #ffffff;
+    --fm-btn-bg-hover:        #f0f0f0;
+    --fm-btn-border:          #c0c0c0;
+    --fm-danger:              #c0392b;
+    --fm-danger-hover:        #96281b;
+
+    --fm-modal-backdrop-bg:   rgba(0, 0, 0, 0.45);
+    --fm-modal-bg:            #ffffff;
+    --fm-modal-shadow:        0 8px 32px rgba(0,0,0,0.18);
+
+    --fm-busy-backdrop-bg:    rgba(255, 255, 255, 0.75);
+    --fm-input-border:        #c0c0c0;
+    --fm-input-focus-border:  #0057b8;
+}
+
+/* ── Root ──────────────────────────────────────────────────────────────── */
+.fm-root {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    font-family: var(--fm-font-family);
+    font-size: var(--fm-font-size);
+    color: var(--fm-text);
+    background: var(--fm-bg);
+    border: 1px solid var(--fm-border);
+    border-radius: var(--fm-border-radius);
+    overflow: hidden;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.fm-root *, .fm-root *::before, .fm-root *::after {
+    box-sizing: border-box;
+}
+
+/* ── Toolbar ───────────────────────────────────────────────────────────── */
+.fm-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 8px;
+    background: var(--fm-toolbar-bg);
+    border-bottom: 1px solid var(--fm-border);
+    flex-shrink: 0;
+}
+
+.fm-tb-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--fm-border-radius);
+    color: var(--fm-text);
+    cursor: pointer;
+    font-size: var(--fm-font-size);
+    white-space: nowrap;
+    transition: background var(--fm-transition), border-color var(--fm-transition);
+}
+
+.fm-tb-btn:hover:not(:disabled) {
+    background: var(--fm-btn-bg-hover);
+    border-color: var(--fm-btn-border);
+}
+
+.fm-tb-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.fm-tb-btn-danger { color: var(--fm-danger); }
+.fm-tb-btn-danger:hover:not(:disabled) { background: #fff0ee; border-color: var(--fm-danger); }
+
+.fm-tb-sep {
+    width: 1px;
+    height: 20px;
+    background: var(--fm-border);
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+
+.fm-tb-label { font-size: calc(var(--fm-font-size) - 1px); }
+.fm-icon { font-style: normal; }
+
+/* ── Body ──────────────────────────────────────────────────────────────── */
+.fm-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* ── Volume panel ──────────────────────────────────────────────────────── */
+.fm-volumes {
+    display: flex;
+    flex-direction: column;
+    background: var(--fm-panel-bg);
+    border-right: 1px solid var(--fm-border);
+    overflow-y: auto;
+    flex-shrink: 0;
+    min-width: 120px;
+}
+
+.fm-volumes-header {
+    padding: 8px 12px;
+    font-weight: 600;
+    font-size: calc(var(--fm-font-size) - 1px);
+    color: var(--fm-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--fm-border);
+    flex-shrink: 0;
+}
+
+.fm-volume-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 0;
+    transition: background var(--fm-transition);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fm-volume-item:hover { background: var(--fm-row-hover-bg); }
+.fm-volume-selected { background: var(--fm-volume-selected-bg) !important; font-weight: 600; }
+.fm-volume-name { overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Splitter ──────────────────────────────────────────────────────────── */
+.fm-splitter {
+    width: 5px;
+    background: var(--fm-splitter-bg);
+    cursor: col-resize;
+    flex-shrink: 0;
+    transition: background var(--fm-transition);
+}
+
+.fm-splitter:hover { background: var(--fm-splitter-hover-bg); }
+
+/* ── Main area ─────────────────────────────────────────────────────────── */
+.fm-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    background: var(--fm-main-bg);
+    overflow: hidden;
+    min-width: 0;
+}
+
+/* ── Breadcrumb ────────────────────────────────────────────────────────── */
+.fm-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--fm-border);
+    background: var(--fm-toolbar-bg);
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.fm-bc-up {
+    padding: 3px 8px;
+    background: transparent;
+    border: 1px solid var(--fm-btn-border);
+    border-radius: var(--fm-border-radius);
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--fm-text);
+    transition: background var(--fm-transition);
+    flex-shrink: 0;
+}
+
+.fm-bc-up:hover:not(:disabled) { background: var(--fm-btn-bg-hover); }
+.fm-bc-up:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.fm-bc-path {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.fm-bc-segment {
+    background: transparent;
+    border: none;
+    color: var(--fm-accent);
+    cursor: pointer;
+    font-size: var(--fm-font-size);
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: background var(--fm-transition);
+    white-space: nowrap;
+}
+
+.fm-bc-segment:hover { background: var(--fm-row-hover-bg); }
+.fm-bc-current { color: var(--fm-text); font-weight: 600; cursor: default; }
+.fm-bc-current:hover { background: transparent; }
+
+.fm-bc-sep {
+    color: var(--fm-text-muted);
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+/* ── Listing ───────────────────────────────────────────────────────────── */
+.fm-listing {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.fm-loading, .fm-empty {
+    padding: 24px;
+    color: var(--fm-text-muted);
+    font-style: italic;
+    text-align: center;
+}
+
+/* Column header row */
+.fm-list-header {
+    display: flex;
+    padding: 0 8px;
+    background: var(--fm-header-bg);
+    border-bottom: 1px solid var(--fm-border);
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.fm-list-body { flex: 1; overflow-y: auto; }
+
+.fm-col {
+    padding: 7px 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Column widths */
+.fm-col-name     { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; }
+.fm-col-type     { width: 80px; flex-shrink: 0; }
+.fm-col-size     { width: 90px; flex-shrink: 0; text-align: right; }
+.fm-col-modified { width: 150px; flex-shrink: 0; }
+
+.fm-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.fm-sortable {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: calc(var(--fm-font-size) - 1px);
+    color: var(--fm-text-muted);
+}
+
+.fm-sortable:hover { color: var(--fm-text); }
+.fm-sorted { color: var(--fm-accent); }
+
+/* File rows */
+.fm-list-row {
+    display: flex;
+    padding: 0 8px;
+    cursor: pointer;
+    transition: background var(--fm-transition);
+    border-bottom: 1px solid transparent;
+}
+
+.fm-list-row:hover { background: var(--fm-row-hover-bg); }
+
+.fm-row-selected {
+    background: var(--fm-row-selected-bg) !important;
+    color: var(--fm-row-selected-text);
+}
+
+.fm-row-cut { opacity: var(--fm-row-cut-opacity); }
+
+/* ── Buttons (modal) ───────────────────────────────────────────────────── */
+.fm-btn {
+    padding: 7px 18px;
+    border-radius: var(--fm-border-radius);
+    border: 1px solid var(--fm-btn-border);
+    font-size: var(--fm-font-size);
+    cursor: pointer;
+    transition: background var(--fm-transition), border-color var(--fm-transition);
+}
+
+.fm-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.fm-btn-primary {
+    background: var(--fm-accent);
+    border-color: var(--fm-accent);
+    color: var(--fm-text-on-accent);
+}
+
+.fm-btn-primary:hover:not(:disabled) {
+    background: var(--fm-accent-hover);
+    border-color: var(--fm-accent-hover);
+}
+
+.fm-btn-secondary {
+    background: var(--fm-btn-bg);
+    color: var(--fm-text);
+}
+
+.fm-btn-secondary:hover:not(:disabled) { background: var(--fm-btn-bg-hover); }
+
+/* ── Modal ─────────────────────────────────────────────────────────────── */
+.fm-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: var(--fm-modal-backdrop-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.fm-modal {
+    background: var(--fm-modal-bg);
+    border-radius: var(--fm-border-radius);
+    box-shadow: var(--fm-modal-shadow);
+    min-width: 320px;
+    max-width: 480px;
+    width: 90%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.fm-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--fm-border);
+}
+
+.fm-modal-title { font-weight: 600; font-size: calc(var(--fm-font-size) + 1px); }
+
+.fm-modal-close {
+    background: transparent;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    color: var(--fm-text-muted);
+    padding: 2px 6px;
+    border-radius: 3px;
+    transition: background var(--fm-transition);
+}
+
+.fm-modal-close:hover { background: var(--fm-btn-bg-hover); color: var(--fm-text); }
+
+.fm-modal-body {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.fm-modal-message { margin: 0; color: var(--fm-text); line-height: 1.5; }
+
+.fm-modal-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--fm-input-border);
+    border-radius: var(--fm-border-radius);
+    font-size: var(--fm-font-size);
+    font-family: var(--fm-font-family);
+    outline: none;
+    transition: border-color var(--fm-transition);
+    color: var(--fm-text);
+    background: var(--fm-main-bg);
+}
+
+.fm-modal-input:focus { border-color: var(--fm-input-focus-border); }
+
+.fm-modal-validation {
+    font-size: calc(var(--fm-font-size) - 1px);
+    color: var(--fm-danger);
+}
+
+.fm-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--fm-border);
+}
+
+/* ── Busy overlay ──────────────────────────────────────────────────────── */
+.fm-busy-backdrop {
+    position: absolute;
+    inset: 0;
+    background: var(--fm-busy-backdrop-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+}
+
+.fm-busy-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    background: var(--fm-modal-bg);
+    border-radius: var(--fm-border-radius);
+    padding: 24px 32px;
+    box-shadow: var(--fm-modal-shadow);
+}
+
+.fm-busy-message { color: var(--fm-text-muted); font-size: var(--fm-font-size); }
+
+/* Spinner */
+@@keyframes fm-spin {
+    to { transform: rotate(360deg); }
+}
+
+.fm-busy-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--fm-border);
+    border-top-color: var(--fm-accent);
+    border-radius: 50%;
+    animation: fm-spin 0.7s linear infinite;
+}

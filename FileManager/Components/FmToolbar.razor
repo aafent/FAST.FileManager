@@ -1,0 +1,164 @@
+@namespace FAST.FileManager.Components
+@using FAST.FileManager.Abstractions
+
+<div class="fm-toolbar">
+
+    @if (Capabilities.CanCreateFolder)
+    {
+        <button class="fm-tb-btn" title="New Folder"
+                disabled="@(CurrentVolume is null)"
+                @onclick="() => OnNewFolder.InvokeAsync()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                <line x1="12" y1="11" x2="12" y2="17"/>
+                <line x1="9" y1="14" x2="15" y2="14"/>
+            </svg>
+            New Folder
+        </button>
+        <div class="fm-tb-sep"></div>
+    }
+
+    @if (Capabilities.CanUpload)
+    {
+        <button class="fm-tb-btn" title="Upload file"
+                disabled="@(CurrentVolume is null)"
+                @onclick="() => OnUpload.InvokeAsync()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 16 12 12 8 16"/>
+                <line x1="12" y1="12" x2="12" y2="21"/>
+                <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+            </svg>
+            Upload
+        </button>
+    }
+
+    @if (Capabilities.CanDownload)
+    {
+        <button class="fm-tb-btn" title="Download selected file"
+                disabled="@(!HasFileSelected)"
+                @onclick="() => OnDownload.InvokeAsync()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="8 17 12 21 16 17"/>
+                <line x1="12" y1="12" x2="12" y2="21"/>
+                <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+            </svg>
+            Download
+        </button>
+        <div class="fm-tb-sep"></div>
+    }
+
+    @if (Capabilities.CanRename)
+    {
+        <button class="fm-tb-btn" title="Rename selected item"
+                disabled="@(!HasSelection)"
+                @onclick="() => OnRename.InvokeAsync()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            Rename
+        </button>
+    }
+
+    @if (Capabilities.CanMove)
+    {
+        <button class="fm-tb-btn" title="Cut selected item"
+                disabled="@(!HasSelection)"
+                @onclick="() => OnCut.InvokeAsync()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="6" cy="20" r="3"/><circle cx="6" cy="4" r="3"/>
+                <line x1="6" y1="7" x2="6" y2="17"/>
+                <polyline points="20 4 8.12 15.88"/>
+                <polyline points="14.47 14.48 20 20 14.47 9.53"/>
+            </svg>
+            Cut
+        </button>
+    }
+
+    @if (Capabilities.CanCopy)
+    {
+        <button class="fm-tb-btn" title="Copy selected item"
+                disabled="@(!HasSelection)"
+                @onclick="() => OnCopy.InvokeAsync()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            Copy
+        </button>
+    }
+
+    @if (Capabilities.CanCopy)
+    {
+        <button class="fm-tb-btn" title="Duplicate selected item in the same folder"
+                disabled="@(!HasSelection)"
+                @onclick="() => OnDuplicate.InvokeAsync()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                <line x1="12" y1="12" x2="12" y2="18"/>
+                <line x1="9" y1="15" x2="15" y2="15"/>
+            </svg>
+            Duplicate
+        </button>
+    }
+
+    @if (Capabilities.CanMove || Capabilities.CanCopy)
+    {
+        <button class="fm-tb-btn" title="Paste into current folder"
+                disabled="@(!HasClipboard)"
+                @onclick="() => OnPaste.InvokeAsync()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+            </svg>
+            Paste
+        </button>
+        <div class="fm-tb-sep"></div>
+    }
+
+    @if (Capabilities.CanDelete)
+    {
+        <button class="fm-tb-btn fm-tb-btn-danger" title="Delete selected item"
+                disabled="@(!HasSelection)"
+                @onclick="() => OnDelete.InvokeAsync()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6"/><path d="M14 11v6"/>
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+            Delete
+        </button>
+    }
+
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Capabilities Capabilities { get; set; } = new();
+    [Parameter] public Volume? CurrentVolume { get; set; }
+    [Parameter] public StorageItem? SelectedItem { get; set; }
+    [Parameter] public bool HasClipboard { get; set; }
+
+    [Parameter] public EventCallback OnNewFolder { get; set; }
+    [Parameter] public EventCallback OnUpload { get; set; }
+    [Parameter] public EventCallback OnDownload { get; set; }
+    [Parameter] public EventCallback OnRename { get; set; }
+    [Parameter] public EventCallback OnCut { get; set; }
+    [Parameter] public EventCallback OnCopy { get; set; }
+    [Parameter] public EventCallback OnDuplicate { get; set; }
+    [Parameter] public EventCallback OnPaste { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+
+    private bool HasSelection   => SelectedItem is not null;
+    private bool HasFileSelected => SelectedItem is { IsFile: true };
+}

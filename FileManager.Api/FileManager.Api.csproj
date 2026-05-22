@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>FAST.FileManager.Api</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- S3 provider lives server-side only — credentials never reach the browser -->
+    <ProjectReference Include="..\FileManager.Providers\FileManager.Providers.csproj" />
+    <!-- Hosts the WASM app as a static client -->
+    <ProjectReference Include="..\FileManager.App\FileManager.App.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Blazor WASM hosting support -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="9.0.0" />
+  </ItemGroup>
+
+</Project>

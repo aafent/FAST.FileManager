@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+
+    <!-- NuGet package metadata -->
+    <PackageId>FAST.FileManager</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Your Company</Authors>
+    <Description>
+      A dependency-free Blazor WASM file manager component and a transport-agnostic
+      file provider abstraction. Provider implementations (e.g. S3) ship separately.
+    </Description>
+    <PackageTags>blazor;wasm;file-manager;component;s3</PackageTags>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Required for Blazor component authoring. This is part of the .NET 9
+         shared framework / Razor SDK, not a third-party dependency. -->
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.0" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,58 @@
+@namespace FAST.FileManager.Components
+@using FAST.FileManager.Abstractions
+
+<div class="fm-breadcrumb">
+
+    <button class="fm-bc-up" title="Up one folder"
+            disabled="@(!CanGoUp)" @onclick="GoUp">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="18 15 12 9 6 15"/>
+        </svg>
+    </button>
+
+    <div class="fm-bc-path">
+        @if (CurrentKey.VolumeId is { Length: > 0 })
+        {
+            <button class="fm-bc-segment"
+                    @onclick="() => NavigateTo(new StructuredKey(CurrentKey.VolumeId))">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                </svg>
+                @CurrentKey.VolumeId
+            </button>
+        }
+
+        @for (int i = 0; i < CurrentKey.Segments.Length; i++)
+        {
+            var depth = i;
+            var segments = CurrentKey.Segments.Take(depth + 1);
+            var isCurrent = depth == CurrentKey.Segments.Length - 1;
+            <span class="fm-bc-sep">›</span>
+            <button class="fm-bc-segment @(isCurrent ? "fm-bc-current" : "")"
+                    @onclick="() => NavigateTo(new StructuredKey(CurrentKey.VolumeId, segments))">
+                @CurrentKey.Segments[depth]
+            </button>
+        }
+    </div>
+
+</div>
+
+@code {
+    [Parameter, EditorRequired] public StructuredKey CurrentKey { get; set; }
+    [Parameter] public EventCallback<StructuredKey> OnNavigate { get; set; }
+
+    private bool CanGoUp => !CurrentKey.IsRoot;
+
+    private async Task GoUp()
+    {
+        if (CanGoUp)
+            await OnNavigate.InvokeAsync(CurrentKey.GetParent());
+    }
+
+    private async Task NavigateTo(StructuredKey key)
+        => await OnNavigate.InvokeAsync(key);
+}

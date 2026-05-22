@@ -1,0 +1,732 @@
+@* FileManagerComponent.razor
+   The main file manager component. Drop it on any page and pass an IFileProvider:
+       <FileManagerComponent Provider="@myProvider" />
+   The component fills its containing element (set width/height on the wrapper div).
+*@
+@namespace FAST.FileManager.Components
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div id="@_containerId" class="fm-root">
+
+    @* ── Toolbar ──────────────────────────────────────────────────────── *@
+    <FmToolbar Capabilities="_capabilities"
+               CurrentVolume="_selectedVolume"
+               SelectedItem="_selectedItem"
+               HasClipboard="_clipboard is not null"
+               OnNewFolder="StartNewFolder"
+               OnUpload="StartUpload"
+               OnDownload="StartDownload"
+               OnRename="StartRename"
+               OnCut="StartCut"
+               OnCopy="StartCopy"
+               OnDuplicate="StartDuplicate"
+               OnPaste="StartPaste"
+               OnDelete="StartDelete" />
+
+    @* ── Body (left panel + splitter + main area) ─────────────────────── *@
+    <div class="fm-body">
+
+        @* ── Left panel: volumes ──────────────────────────────────────── *@
+        <div id="@_leftPanelId" class="fm-volumes" style="width:@(_leftWidthPct)%">
+            <div class="fm-volumes-header">Volumes</div>
+            @if (_volumes is null)
+            {
+                <div class="fm-loading">Loading…</div>
+            }
+            else
+            {
+                @foreach (var vol in _volumes)
+                {
+                    <div class="fm-volume-item @(vol.Id == _selectedVolume?.Id ? "fm-volume-selected" : "")"
+                         @onclick="() => SelectVolume(vol)">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                             stroke="var(--fm-volume-stroke)" stroke-width="1.7"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                        </svg>
+                        <span class="fm-volume-name">@vol.DisplayName</span>
+                    </div>
+                }
+            }
+        </div>
+
+        @* ── Splitter handle ──────────────────────────────────────────── *@
+        <div id="@_splitterId" class="fm-splitter" title="Drag to resize"></div>
+
+        @* ── Main area ────────────────────────────────────────────────── *@
+        <div class="fm-main">
+
+            @* Breadcrumb *@
+            @if (_selectedVolume is not null)
+            {
+                <FmBreadcrumb CurrentKey="_currentKey"
+                              OnNavigate="NavigateTo" />
+            }
+
+            @* File / folder listing *@
+            <div class="fm-listing">
+                @if (_loadingItems)
+                {
+                    <div class="fm-loading">Loading…</div>
+                }
+                else if (_selectedVolume is null)
+                {
+                    <div class="fm-empty">Select a volume to browse its contents.</div>
+                }
+                else if (_items.Count == 0)
+                {
+                    <div class="fm-empty">This folder is empty.</div>
+                }
+                else
+                {
+                    @* Column headers *@
+                    <div class="fm-list-header">
+                        <div class="fm-col fm-col-name fm-sortable @SortClass(SortColumn.Name)"
+                             @onclick="() => SetSort(SortColumn.Name)">
+                            Name @SortArrow(SortColumn.Name)
+                        </div>
+                        <div class="fm-col fm-col-type fm-sortable @SortClass(SortColumn.Type)"
+                             @onclick="() => SetSort(SortColumn.Type)">
+                            Type @SortArrow(SortColumn.Type)
+                        </div>
+                        <div class="fm-col fm-col-size fm-sortable @SortClass(SortColumn.Size)"
+                             @onclick="() => SetSort(SortColumn.Size)">
+                            Size @SortArrow(SortColumn.Size)
+                        </div>
+                        <div class="fm-col fm-col-modified fm-sortable @SortClass(SortColumn.Modified)"
+                             @onclick="() => SetSort(SortColumn.Modified)">
+                            Last Modified @SortArrow(SortColumn.Modified)
+                        </div>
+                    </div>
+
+                    @* Rows *@
+                    <div class="fm-list-body">
+                        @foreach (var item in SortedItems)
+                        {
+                            var isSelected = _selectedItem?.Key == item.Key;
+                            var isCut = _clipboard?.IsCut == true && _clipboard.Item.Key == item.Key;
+
+                            <div class="fm-list-row @(isSelected ? "fm-row-selected" : "") @(isCut ? "fm-row-cut" : "")"
+                                 @onclick="() => SelectItem(item)"
+                                 @ondblclick="() => ActivateItem(item)">
+
+                                <div class="fm-col fm-col-name">
+                                    <span class="fm-item-icon">
+                                        @if (item.IsFolder)
+                                        {
+                                            <svg width="15" height="15" viewBox="0 0 24 24"
+                                                 fill="var(--fm-folder-fill)"
+                                                 stroke="var(--fm-folder-stroke)"
+                                                 stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                                            </svg>
+                                        }
+                                        else
+                                        {
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                                                 stroke="#999" stroke-width="1.6"
+                                                 stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+                                                <polyline points="13 2 13 9 20 9"/>
+                                            </svg>
+                                        }
+                                    </span>
+                                    <span class="fm-item-name">@item.Name</span>
+                                </div>
+                                <div class="fm-col fm-col-type">@ItemType(item)</div>
+                                <div class="fm-col fm-col-size">@FormatSize(item)</div>
+                                <div class="fm-col fm-col-modified">@FormatDate(item)</div>
+
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* ── Modals ───────────────────────────────────────────────────────── *@
+
+    @* Rename / New Folder input modal *@
+    <FmModal @ref="_inputModal"
+             Visible="_inputModalVisible"
+             Title="@_modalTitle"
+             ShowInput="true"
+             InputValue="@_modalInputValue"
+             InputPlaceholder="@_modalPlaceholder"
+             ConfirmLabel="OK"
+             CancelLabel="Cancel"
+             OnInputChanged="v => _modalInputValue = v"
+             OnConfirm="OnModalConfirm"
+             OnCancel="OnModalCancel" />
+
+    @* Delete confirmation modal *@
+    <FmModal Visible="_confirmDeleteVisible"
+             Title="Delete"
+             Message="@_deleteMessage"
+             ShowInput="false"
+             ConfirmLabel="Delete"
+             CancelLabel="Cancel"
+             OnConfirm="OnDeleteConfirmed"
+             OnCancel="OnModalCancel" />
+
+    @* Error modal *@
+    <FmModal Visible="_errorVisible"
+             Title="Error"
+             Message="@_errorMessage"
+             ShowInput="false"
+             ConfirmLabel="Close"
+             CancelLabel=""
+             CloseOnBackdrop="true"
+             OnConfirm="_ => { _errorVisible = false; }"
+             OnCancel="() => { _errorVisible = false; return Task.CompletedTask; }" />
+
+    @* Busy overlay *@
+    <FmBusy Visible="_busy" Message="@_busyMessage" />
+
+    @* Hidden InputFile for uploads *@
+    <div style="display:none">
+        <InputFile id="@_fileInputId" OnChange="OnFileSelected" />
+    </div>
+
+</div>
+
+@code {
+    // ── Parameters ────────────────────────────────────────────────────────────
+
+    /// <summary>The file provider that backs this component instance.</summary>
+    [Parameter, EditorRequired]
+    public IFileProvider Provider { get; set; } = null!;
+
+    // ── Element IDs (unique per instance) ─────────────────────────────────────
+    private readonly string _containerId = $"fm-{Guid.NewGuid():N}";
+    private readonly string _leftPanelId = $"fml-{Guid.NewGuid():N}";
+    private readonly string _splitterId = $"fms-{Guid.NewGuid():N}";
+    private readonly string _fileInputId = $"fmf-{Guid.NewGuid():N}";
+
+    // ── State ──────────────────────────────────────────────────────────────────
+    private Capabilities _capabilities = new();
+    private List<Volume>? _volumes;
+    private Volume? _selectedVolume;
+    private StructuredKey _currentKey;
+    private List<StorageItem> _items = new();
+    private StorageItem? _selectedItem;
+    private bool _loadingItems;
+    private double _leftWidthPct = 20;
+
+    // ── Clipboard ──────────────────────────────────────────────────────────────
+    private ClipboardEntry? _clipboard;
+    private record ClipboardEntry(StorageItem Item, bool IsCut);
+
+    // ── Sort ───────────────────────────────────────────────────────────────────
+    private SortColumn _sortColumn = SortColumn.Name;
+    private bool _sortAscending = true;
+
+    // ── Modal state ────────────────────────────────────────────────────────────
+    private FmModal? _inputModal;
+    private bool _inputModalVisible;
+    private string _modalTitle = string.Empty;
+    private string _modalInputValue = string.Empty;
+    private string _modalPlaceholder = string.Empty;
+    private ModalMode _modalMode;
+
+    private bool _confirmDeleteVisible;
+    private string _deleteMessage = string.Empty;
+
+    private bool _errorVisible;
+    private string _errorMessage = string.Empty;
+
+    private bool _busy;
+    private string _busyMessage = string.Empty;
+
+    // ── JS interop ─────────────────────────────────────────────────────────────
+    private DotNetObjectReference<FileManagerComponent>? _dotNetRef;
+    private IJSObjectReference? _jsModule;
+
+    // ── Lifecycle ──────────────────────────────────────────────────────────────
+
+    protected override async Task OnInitializedAsync()
+    {
+        _capabilities = Provider.GetCapabilities();
+        await LoadVolumesAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _jsModule = await JS.InvokeAsync<IJSObjectReference>(
+                "import", "./FileManager.js");
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await _jsModule.InvokeVoidAsync(
+                "initSplitter",
+                _containerId, _leftPanelId, _splitterId, _dotNetRef);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_jsModule is not null)
+            await _jsModule.DisposeAsync();
+        _dotNetRef?.Dispose();
+    }
+
+    // ── Called by JS splitter ──────────────────────────────────────────────────
+
+    [JSInvokable]
+    public void OnSplitterMoved(double widthPct)
+    {
+        _leftWidthPct = widthPct;
+        StateHasChanged();
+    }
+
+    // ── Volume loading ─────────────────────────────────────────────────────────
+
+    private async Task LoadVolumesAsync()
+    {
+        var result = await Provider.GetVolumesAsync();
+        if (result.Failed)
+        {
+            ShowError($"Could not load volumes: {result.Message}");
+            return;
+        }
+
+        _volumes = result.Value?.ToList() ?? new();
+
+        if (_volumes.Count > 0)
+            await SelectVolume(_volumes[0]);
+    }
+
+    private async Task SelectVolume(Volume vol)
+    {
+        _selectedVolume = vol;
+        _selectedItem = null;
+        _currentKey = vol.RootKey;
+        await LoadItemsAsync();
+    }
+
+    // ── Item listing ───────────────────────────────────────────────────────────
+
+    private async Task LoadItemsAsync()
+    {
+        _loadingItems = true;
+        _selectedItem = null;
+        StateHasChanged();
+
+        var result = await Provider.ListAsync(_currentKey);
+        _loadingItems = false;
+
+        if (result.Failed)
+        {
+            ShowError($"Could not list folder: {result.Message}");
+            _items = new();
+        }
+        else
+        {
+            _items = result.Value?.ToList() ?? new();
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task NavigateTo(StructuredKey key)
+    {
+        _currentKey = key;
+        _selectedItem = null;
+        await LoadItemsAsync();
+    }
+
+    private void SelectItem(StorageItem item)
+        => _selectedItem = _selectedItem?.Key == item.Key ? null : item;
+
+    private async Task ActivateItem(StorageItem item)
+    {
+        if (item.IsFolder)
+            await NavigateTo(item.Key);
+    }
+
+    // ── Sort ───────────────────────────────────────────────────────────────────
+
+    private IEnumerable<StorageItem> SortedItems
+    {
+        get
+        {
+            var folders = _items.Where(i => i.IsFolder);
+            var files = _items.Where(i => i.IsFile);
+
+            return _sortColumn switch
+            {
+                SortColumn.Name => Order(folders, i => i.Name)
+                    .Concat(Order(files, i => i.Name)),
+                SortColumn.Type => Order(folders, i => i.Name)
+                    .Concat(Order(files, i => i.Extension)),
+                SortColumn.Size => Order(folders, i => i.Name)
+                    .Concat(Order(files, i => i.Size)),
+                SortColumn.Modified => Order(folders, i => i.LastModified)
+                    .Concat(Order(files, i => i.LastModified)),
+                _ => folders.Concat(files)
+            };
+        }
+    }
+
+    private IEnumerable<StorageItem> Order<TKey>(
+        IEnumerable<StorageItem> items, Func<StorageItem, TKey> key)
+        => _sortAscending
+            ? items.OrderBy(key)
+            : items.OrderByDescending(key);
+
+    private void SetSort(SortColumn col)
+    {
+        if (_sortColumn == col)
+            _sortAscending = !_sortAscending;
+        else
+        {
+            _sortColumn = col;
+            _sortAscending = true;
+        }
+    }
+
+    private string SortClass(SortColumn col) =>
+        _sortColumn == col ? "fm-sorted" : string.Empty;
+
+    private string SortArrow(SortColumn col) =>
+        _sortColumn != col ? string.Empty :
+        _sortAscending ? "▲" : "▼";
+
+    // ── Toolbar actions ────────────────────────────────────────────────────────
+
+    private void StartNewFolder()
+    {
+        _modalMode = ModalMode.NewFolder;
+        _modalTitle = "New Folder";
+        _modalInputValue = string.Empty;
+        _modalPlaceholder = "Folder name";
+        _inputModalVisible = true;
+    }
+
+    private void StartRename()
+    {
+        if (_selectedItem is null) return;
+        _modalMode = ModalMode.Rename;
+        _modalTitle = "Rename";
+        _modalInputValue = _selectedItem.Name;
+        _modalPlaceholder = "New name";
+        _inputModalVisible = true;
+    }
+
+    private void StartDelete()
+    {
+        if (_selectedItem is null) return;
+        _deleteMessage = _selectedItem.IsFolder
+            ? $"Delete folder '{_selectedItem.Name}' and all its contents?"
+            : $"Delete file '{_selectedItem.Name}'?";
+        _confirmDeleteVisible = true;
+    }
+
+    private void StartCut()
+    {
+        if (_selectedItem is null) return;
+        _clipboard = new(_selectedItem, IsCut: true);
+    }
+
+    private void StartCopy()
+    {
+        if (_selectedItem is null) return;
+        _clipboard = new(_selectedItem, IsCut: false);
+    }
+
+    private async Task StartDuplicate()
+    {
+        if (_selectedItem is null) return;
+
+        var duplicateName = await GenerateDuplicateNameAsync(_selectedItem);
+
+        ShowBusy("Duplicating…");
+        var result = await Provider.DuplicateAsync(_selectedItem, duplicateName);
+        HideBusy();
+
+        if (result.Failed)
+        {
+            ShowError(result.Message ?? "Duplicate failed.");
+            return;
+        }
+
+        await LoadItemsAsync();
+        _selectedItem = _items.FirstOrDefault(i => i.Name == duplicateName);
+    }
+
+    /// <summary>
+    /// Generates a non-conflicting duplicate name for the given item.
+    /// Files:   "report.pdf" → "report (2).pdf" → "report (3).pdf" etc.
+    /// Folders: "docs"       → "docs (2)"        → "docs (3)" etc.
+    /// </summary>
+    private async Task<string> GenerateDuplicateNameAsync(StorageItem item)
+    {
+        // Build the set of existing names in the current folder for fast lookup.
+        var existingNames = _items
+            .Select(i => i.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var ext   = item.IsFolder ? string.Empty : item.Extension;   // e.g. ".pdf"
+        var title = item.IsFolder ? item.Name : item.Title;           // name without ext
+
+        for (var n = 2; n < 10000; n++)
+        {
+            var candidate = item.IsFolder
+                ? $"{title} ({n})"
+                : $"{title} ({n}){ext}";
+
+            if (!existingNames.Contains(candidate))
+                return candidate;
+        }
+
+        // Fallback — should never reach here in practice.
+        return item.IsFolder
+            ? $"{title} (copy)"
+            : $"{title} (copy){ext}";
+    }
+
+    private async Task StartPaste()
+    {
+        if (_clipboard is null) return;
+
+        // Cross-volume guard.
+        if (_clipboard.Item.Key.VolumeId != _currentKey.VolumeId)
+        {
+            ShowError("Cross-volume move and copy are not supported in this version.");
+            return;
+        }
+
+        // Pasting into the same folder where the item already lives is a no-op.
+        if (_clipboard.Item.Key.GetParent() == _currentKey && !_clipboard.IsCut)
+        {
+            ShowError("The item is already in this folder.");
+            return;
+        }
+
+        ShowBusy(_clipboard.IsCut ? "Moving…" : "Copying…");
+
+        FileOperationResult<StorageItem> result;
+        if (_clipboard.IsCut)
+            result = await Provider.MoveAsync(_clipboard.Item, _currentKey);
+        else
+            result = await Provider.CopyAsync(_clipboard.Item, _currentKey);
+
+        HideBusy();
+
+        if (result.Failed)
+        {
+            ShowError(result.Message ?? "Operation failed.");
+            return;
+        }
+
+        if (_clipboard.IsCut)
+            _clipboard = null;
+
+        await LoadItemsAsync();
+    }
+
+    private async Task StartDownload()
+    {
+        if (_selectedItem is null || !_selectedItem.IsFile) return;
+
+        ShowBusy("Downloading…");
+        var result = await Provider.DownloadAsync(_selectedItem);
+        HideBusy();
+
+        if (result.Failed)
+        {
+            ShowError(result.Message ?? "Download failed.");
+            return;
+        }
+
+        using var stream = result.Value!;
+        using var ms = new System.IO.MemoryStream();
+        await stream.CopyToAsync(ms);
+        var bytes = ms.ToArray();
+
+        await _jsModule!.InvokeVoidAsync(
+            "downloadFile",
+            _selectedItem.Name,
+            _selectedItem.ContentType ?? "application/octet-stream",
+            bytes);
+    }
+
+    private async Task StartUpload()
+    {
+        // Trigger the hidden InputFile element click via JS.
+        await JS.InvokeVoidAsync(
+            "eval",
+            $"document.getElementById('{_fileInputId}').click()");
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        if (_selectedVolume is null) return;
+
+        var file = e.File;
+        if (file is null) return;
+
+        ShowBusy($"Uploading '{file.Name}'…");
+
+        try
+        {
+            // Open the browser file stream (max 512 MB; adjust if needed).
+            await using var stream = file.OpenReadStream(maxAllowedSize: 512 * 1024 * 1024);
+            var result = await Provider.UploadAsync(
+                _currentKey,
+                file.Name,
+                stream,
+                file.ContentType);
+
+            HideBusy();
+
+            if (result.Failed)
+            {
+                ShowError(result.Error == FileOperationError.Conflict
+                    ? $"A file named '{file.Name}' already exists."
+                    : result.Message ?? "Upload failed.");
+                return;
+            }
+
+            await LoadItemsAsync();
+            _selectedItem = _items.FirstOrDefault(i => i.Name == file.Name);
+        }
+        catch (Exception ex)
+        {
+            HideBusy();
+            ShowError($"Upload failed: {ex.Message}");
+        }
+    }
+
+    // ── Modal callbacks ────────────────────────────────────────────────────────
+
+    private async Task OnModalConfirm(string value)
+    {
+        _inputModalVisible = false;
+
+        switch (_modalMode)
+        {
+            case ModalMode.NewFolder:
+                await ExecuteNewFolder(value.Trim());
+                break;
+            case ModalMode.Rename:
+                await ExecuteRename(value.Trim());
+                break;
+        }
+    }
+
+    private Task OnModalCancel()
+    {
+        _inputModalVisible = false;
+        _confirmDeleteVisible = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task OnDeleteConfirmed(string _)
+    {
+        _confirmDeleteVisible = false;
+        if (_selectedItem is null) return;
+
+        ShowBusy("Deleting…");
+        var result = await Provider.DeleteAsync(_selectedItem);
+        HideBusy();
+
+        if (result.Failed)
+            ShowError(result.Message ?? "Delete failed.");
+        else
+        {
+            _selectedItem = null;
+            await LoadItemsAsync();
+        }
+    }
+
+    // ── Operations ─────────────────────────────────────────────────────────────
+
+    private async Task ExecuteNewFolder(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+
+        var result = await Provider.CreateFolderAsync(_currentKey, name);
+        if (result.Failed)
+        {
+            ShowError(result.Error == FileOperationError.Conflict
+                ? $"A folder named '{name}' already exists."
+                : result.Message ?? "Could not create folder.");
+            return;
+        }
+
+        await LoadItemsAsync();
+        _selectedItem = _items.FirstOrDefault(i => i.Name == name);
+    }
+
+    private async Task ExecuteRename(string newName)
+    {
+        if (_selectedItem is null || string.IsNullOrWhiteSpace(newName)) return;
+        if (newName == _selectedItem.Name) return;
+
+        ShowBusy("Renaming…");
+        var result = await Provider.RenameAsync(_selectedItem, newName);
+        HideBusy();
+
+        if (result.Failed)
+        {
+            ShowError(result.Error == FileOperationError.Conflict
+                ? $"An item named '{newName}' already exists."
+                : result.Message ?? "Rename failed.");
+            return;
+        }
+
+        await LoadItemsAsync();
+        _selectedItem = _items.FirstOrDefault(i => i.Name == newName);
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
+    private void ShowBusy(string message = "Please wait…")
+    {
+        _busyMessage = message;
+        _busy = true;
+        StateHasChanged();
+    }
+
+    private void HideBusy()
+    {
+        _busy = false;
+        StateHasChanged();
+    }
+
+    private void ShowError(string message)
+    {
+        _errorMessage = message;
+        _errorVisible = true;
+        StateHasChanged();
+    }
+
+    private static string ItemType(StorageItem item) =>
+        item.IsFolder ? "Folder" :
+        string.IsNullOrEmpty(item.Extension) ? "File" :
+        item.Extension.TrimStart('.').ToUpperInvariant();
+
+    private static string FormatSize(StorageItem item)
+    {
+        if (item.IsFolder) return "—";
+        if (item.Size < 1024) return $"{item.Size} B";
+        if (item.Size < 1024 * 1024) return $"{item.Size / 1024.0:F1} KB";
+        if (item.Size < 1024 * 1024 * 1024) return $"{item.Size / (1024.0 * 1024):F1} MB";
+        return $"{item.Size / (1024.0 * 1024 * 1024):F2} GB";
+    }
+
+    private static string FormatDate(StorageItem item) =>
+        item.LastModified.HasValue
+            ? item.LastModified.Value.LocalDateTime.ToString("yyyy-MM-dd HH:mm")
+            : "—";
+
+    // ── Enums ──────────────────────────────────────────────────────────────────
+
+    private enum SortColumn { Name, Type, Size, Modified }
+    private enum ModalMode { NewFolder, Rename }
+}

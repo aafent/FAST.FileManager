@@ -1,0 +1,137 @@
+@* FmModal.razor
+   A lightweight modal dialog used by the FileManager component for:
+   - Rename (shows a text input)
+   - New Folder (shows a text input)
+   - Delete confirmation (shows a message, no input)
+   - Error display (shows a message, no input)
+*@
+@namespace FAST.FileManager.Components
+
+@if (Visible)
+{
+    <div class="fm-modal-backdrop" @onclick="HandleBackdropClick">
+        <div class="fm-modal" @onclick:stopPropagation="true">
+            <div class="fm-modal-header">
+                <span class="fm-modal-title">@Title</span>
+                <button class="fm-modal-close" @onclick="Cancel" title="Close">&#x2715;</button>
+            </div>
+
+            <div class="fm-modal-body">
+                @if (!string.IsNullOrEmpty(Message))
+                {
+                    <p class="fm-modal-message">@Message</p>
+                }
+
+                @if (ShowInput)
+                {
+                    <input @ref="_inputRef"
+                           class="fm-modal-input"
+                           type="text"
+                           value="@InputValue"
+                           @oninput="OnInput"
+                           @onkeydown="HandleKeyDown"
+                           maxlength="255"
+                           placeholder="@InputPlaceholder" />
+
+                    @if (!string.IsNullOrEmpty(_validationMessage))
+                    {
+                        <span class="fm-modal-validation">@_validationMessage</span>
+                    }
+                }
+            </div>
+
+            <div class="fm-modal-footer">
+                @if (!string.IsNullOrEmpty(CancelLabel))
+                {
+                    <button class="fm-btn fm-btn-secondary" @onclick="Cancel">
+                        @CancelLabel
+                    </button>
+                }
+                <button class="fm-btn fm-btn-primary"
+                        @onclick="Confirm"
+                        disabled="@(!CanConfirm)">
+                    @ConfirmLabel
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string Message { get; set; } = string.Empty;
+    [Parameter] public bool ShowInput { get; set; }
+    [Parameter] public string InputValue { get; set; } = string.Empty;
+    [Parameter] public string InputPlaceholder { get; set; } = string.Empty;
+    [Parameter] public string ConfirmLabel { get; set; } = "OK";
+    [Parameter] public string CancelLabel { get; set; } = "Cancel";
+    [Parameter] public bool CloseOnBackdrop { get; set; } = true;
+
+    [Parameter] public EventCallback<string> OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback<string> OnInputChanged { get; set; }
+
+    private ElementReference _inputRef;
+    private string _validationMessage = string.Empty;
+
+    private bool CanConfirm =>
+        !ShowInput || !string.IsNullOrWhiteSpace(InputValue);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Visible && ShowInput)
+        {
+            // Focus the input on next render tick.
+            await Task.Yield();
+            try { await _inputRef.FocusAsync(); } catch { /* ignore if not rendered yet */ }
+        }
+
+        if (!Visible)
+            _validationMessage = string.Empty;
+    }
+
+    private void OnInput(ChangeEventArgs e)
+    {
+        InputValue = e.Value?.ToString() ?? string.Empty;
+        _validationMessage = string.Empty;
+        OnInputChanged.InvokeAsync(InputValue);
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && CanConfirm)
+            await Confirm();
+        else if (e.Key == "Escape")
+            await Cancel();
+    }
+
+    private async Task Confirm()
+    {
+        if (!CanConfirm) return;
+        await OnConfirm.InvokeAsync(InputValue);
+    }
+
+    private async Task Cancel()
+        => await OnCancel.InvokeAsync();
+
+    private async Task HandleBackdropClick()
+    {
+        if (CloseOnBackdrop)
+            await Cancel();
+    }
+
+    /// <summary>Sets a validation message below the input.</summary>
+    public void SetValidationMessage(string message)
+    {
+        _validationMessage = message;
+        StateHasChanged();
+    }
+
+    /// <summary>Clears the validation message.</summary>
+    public void ClearValidation()
+    {
+        _validationMessage = string.Empty;
+        StateHasChanged();
+    }
+}

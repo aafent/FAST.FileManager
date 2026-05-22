@@ -1,0 +1,8 @@
+.fm-page {
+    flex: 1;
+    overflow: hidden;
+    padding: 12px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}

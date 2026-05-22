@@ -1,0 +1,20 @@
+@* FmBusy.razor
+   A full-overlay busy indicator shown during slow provider operations
+   (folder rename/move/delete/copy that involve many S3 calls).
+*@
+@namespace FAST.FileManager.Components
+
+@if (Visible)
+{
+    <div class="fm-busy-backdrop">
+        <div class="fm-busy-box">
+            <div class="fm-busy-spinner"></div>
+            <span class="fm-busy-message">@(string.IsNullOrEmpty(Message) ? "Please wait…" : Message)</span>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public string Message { get; set; } = string.Empty;
+}

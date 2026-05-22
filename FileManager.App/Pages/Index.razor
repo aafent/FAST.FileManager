@@ -1,0 +1,9 @@
+@page "/"
+@namespace FAST.FileManager.App.Pages
+@using FAST.FileManager.Abstractions
+@using FAST.FileManager.Components
+@inject IFileProvider FileProvider
+
+<div class="fm-page">
+    <FileManagerComponent Provider="@FileProvider" />
+</div>
