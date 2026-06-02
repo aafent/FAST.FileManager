@@ -38,16 +38,17 @@ public static class S3ProviderServiceCollectionExtensions
     /// </example>
     public static IServiceCollection AddS3FileProvider(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        string sectionName = S3ProviderOptions.DefaultSectionName)
     {
         // Bind and validate options.
         var options = new S3ProviderOptions();
-        configuration.GetSection(S3ProviderOptions.SectionName).Bind(options);
+        configuration.GetSection(sectionName).Bind(options);
 
         if (string.IsNullOrWhiteSpace(options.Endpoint))
             throw new InvalidOperationException(
                 $"S3 configuration is missing or incomplete. " +
-                $"Ensure the '{S3ProviderOptions.SectionName}' section in " +
+                $"Ensure the '{sectionName}' section in " +
                 $"appsettings.json has a non-empty Endpoint value.");
 
         // Register a named HttpClient for the S3 provider.

@@ -17,8 +17,8 @@ namespace FAST.FileManager.Providers.LocalFileSystem;
 /// </example>
 public sealed class LocalFileSystemOptions
 {
-    /// <summary>The configuration section name.</summary>
-    public const string SectionName = "LocalFileSystem";
+    /// <summary>The default configuration section name.</summary>
+    public const string DefaultSectionName = "LocalFileSystem";
 
     /// <summary>
     /// The absolute path on the server's filesystem that acts as the root

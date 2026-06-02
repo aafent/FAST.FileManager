@@ -21,8 +21,8 @@ namespace FAST.FileManager.Providers.S3;
 /// </remarks>
 public sealed class S3ProviderOptions
 {
-    /// <summary>The configuration section name to use when binding.</summary>
-    public const string SectionName = "S3";
+    /// <summary>The default configuration section name.</summary>
+    public const string DefaultSectionName = "S3";
 
     /// <summary>
     /// The base URL of the S3-compatible endpoint, without a trailing slash.

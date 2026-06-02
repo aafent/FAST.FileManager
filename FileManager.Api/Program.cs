@@ -1,3 +1,4 @@
+using FAST.FileManager.Api;
 using FAST.FileManager.Api.Endpoints;
 using FAST.FileManager.Providers.Composite;
 
@@ -9,10 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddAntiforgery();
 
 builder.Services.AddCompositeFileProvider(providers =>
-{
-    providers.AddS3Provider(builder.Configuration);
-    providers.AddLocalFileSystemProvider(builder.Configuration, alias: "local");
-});
+    ProviderConfigurationHelper.RegisterProviders(providers, builder.Configuration));
 
 
 // Required for streaming downloads through the API.

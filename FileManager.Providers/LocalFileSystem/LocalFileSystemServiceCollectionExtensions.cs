@@ -32,17 +32,18 @@ public static class LocalFileSystemServiceCollectionExtensions
     /// </example>
     public static IServiceCollection AddLocalFileSystemProvider(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        string sectionName = LocalFileSystemOptions.DefaultSectionName)
     {
         var options = new LocalFileSystemOptions();
         configuration
-            .GetSection(LocalFileSystemOptions.SectionName)
+            .GetSection(sectionName)
             .Bind(options);
 
         if (string.IsNullOrWhiteSpace(options.RootPath))
             throw new InvalidOperationException(
                 $"LocalFileSystem configuration is missing or incomplete. " +
-                $"Ensure the '{LocalFileSystemOptions.SectionName}' section " +
+                $"Ensure the '{sectionName}' section " +
                 $"in appsettings.json has a non-empty RootPath value.");
 
         services.AddSingleton(options);
