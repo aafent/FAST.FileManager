@@ -69,4 +69,15 @@ public sealed class S3ProviderOptions
     /// When true, the provider will use HTTP instead of HTTPS.
     /// </summary>
     public bool UseHttp { get; set; } = false;
+
+    /// <summary>
+    /// When true, all requests are authenticated with a simple Bearer token
+    /// instead of AWS Signature Version 4 (SigV4).
+    /// The <see cref="SecretKey"/> is used verbatim as the token:
+    /// <c>Authorization: Bearer {SecretKey}</c>.
+    /// Use this for S3-compatible endpoints that implement FAST token auth
+    /// rather than SigV4 signing (e.g. FAST.FileRepository).
+    /// Defaults to <c>false</c>.
+    /// </summary>
+    public bool UseBearerAuth { get; set; } = false;
 }

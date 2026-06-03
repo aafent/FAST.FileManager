@@ -1,0 +1,48 @@
+# For more info on HTTP files go to https://aka.ms/vs/httpfile
+    
+#@baseUrl = http://aafent.runasp.net/FASTFileRepository
+@baseUrl = http://localhost:5167
+@fastToken = Bearer jsDyoQC1hLdI2YbdWaH0XF9JqfSmJMfZsz2iqkziXDsDuXSacYlcKbVEWwV0yY/4gkeronrBKKff1VFz3ealXiIN0Hz3ZcVAh4VXR6jq/q3BnOrXQJRKbDkDuJSrwf/E
+@bucket = config
+@key = test/sample.txt
+
+### ListBuckets
+GET {{baseUrl}}/s3/
+Authorization: {{fastToken}}
+
+### ListObjects (bucket contents)
+GET {{baseUrl}}/s3/{{bucket}}
+Authorization: {{fastToken}}
+
+### CreateBucket
+PUT {{baseUrl}}/s3/{{bucket}}
+Authorization: {{fastToken}}
+
+### HeadObject (metadata only)
+HEAD {{baseUrl}}/s3/{{bucket}}/{{key}}
+Authorization: {{fastToken}}
+
+### PutObject (upload binary)
+PUT {{baseUrl}}/s3/{{bucket}}/{{key}}
+Authorization: {{fastToken}}
+Content-Type: application/octet-stream
+
+
+Hello from .http test runner
+
+### GetObject (download binary)
+GET {{baseUrl}}/s3/{{bucket}}/{{key}}
+Authorization: {{fastToken}}
+
+### GetObject - Range request (206 Partial Content)
+GET {{baseUrl}}/s3/{{bucket}}/{{key}}
+Authorization: {{fastToken}}
+Range: bytes=0-99
+
+### DeleteObject
+DELETE {{baseUrl}}/s3/{{bucket}}/{{key}}
+Authorization: {{fastToken}}
+
+### DeleteBucket
+DELETE {{baseUrl}}/s3/{{bucket}}
+Authorization: {{fastToken}}

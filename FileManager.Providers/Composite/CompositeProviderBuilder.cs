@@ -2,6 +2,9 @@ using FAST.FileManager.Abstractions;
 using FAST.FileManager.Providers.LocalFileSystem;
 using FAST.FileManager.Providers.S3;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Net.Http;
 
 namespace FAST.FileManager.Providers.Composite;
 
@@ -49,8 +52,18 @@ public sealed class CompositeProviderBuilder
     private readonly List<ProviderRegistration> _registrations = new();
     private readonly HashSet<string> _aliases =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly ILoggerFactory    _loggerFactory;
+    private readonly IHttpClientFactory? _httpClientFactory;
 
     internal IReadOnlyList<ProviderRegistration> Registrations => _registrations;
+
+    public CompositeProviderBuilder(
+        ILoggerFactory?    loggerFactory     = null,
+        IHttpClientFactory? httpClientFactory = null)
+    {
+        _loggerFactory     = loggerFactory     ?? NullLoggerFactory.Instance;
+        _httpClientFactory = httpClientFactory;
+    }
 
     /// <summary>
     /// Adds an S3-compatible provider, binding its options from
@@ -81,9 +94,10 @@ public sealed class CompositeProviderBuilder
                 $"S3 configuration is missing. Ensure the " +
                 $"'{sectionName}' section has a non-empty Endpoint.");
 
-        var signer   = new SigV4Signer(options.AccessKey, options.SecretKey, options.Region);
-        var http     = new System.Net.Http.HttpClient();
-        var client   = new S3Client(http, signer, options.Endpoint, options.VirtualHostedStyle);
+        var signer   = new SigV4Signer(options.AccessKey, options.SecretKey, options.Region, options.UseBearerAuth);
+        var http     = _httpClientFactory?.CreateClient("FileManager.S3") ?? new HttpClient();
+        var logger   = _loggerFactory.CreateLogger<S3Client>();
+        var client   = new S3Client(http, signer, options.Endpoint, options.VirtualHostedStyle, logger);
         var provider = new S3FileProvider(client, options);
 
         Register(provider, alias);

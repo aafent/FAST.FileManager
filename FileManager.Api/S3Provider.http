@@ -1,0 +1,199 @@
+# FAST.FileManager — S3 Provider HTTP Request Templates
+# ======================================================
+# Use with: Visual Studio / Rider built-in HTTP client
+#           VS Code REST Client extension
+#           JetBrains HTTP Client
+#     .
+# PURPOSE: Replay S3 operations manually to diagnose connection failures
+#          against any S3-compatible service (Cloudflare R2, MinIO, AWS, etc.)
+#    .
+# ── How to use ────────────────────────────────────────────────────────────────
+# 1. Fill in the @variables block below with your credentials and endpoint.
+# 2. Run requests top-to-bottom to verify your service supports each operation.
+# 3. For signed requests: replace the Authorization header with a live value
+#    copied from the Trace log (set log level to Trace in appsettings.json —
+#    see the "S3 HTTP diagnostics" comment). Signatures are valid ~15 minutes.
+#    .
+# ── Path-style vs Virtual-hosted-style ───────────────────────────────────────
+# This provider uses PATH-STYLE by default:
+#   https://ENDPOINT/BUCKET/KEY
+# If your service requires virtual-hosted-style, change the base URL to:
+#   https://BUCKET.ENDPOINT/KEY
+#   .
+# ── Signature note ────────────────────────────────────────────────────────────
+# All requests below show the Authorization and x-amz-* headers as placeholders.
+# To get a real signed value, enable Trace logging and copy the .http snippet
+# that is emitted before each request.
+# =============================================================================
+
+@endpoint = http://aafent.runasp.net/FASTFileRepository/s3
+@region = auto
+@bucket = config
+@key = folder/subfolder/file.txt
+@source_key = folder/subfolder/file.txt
+@dest_key = folder/subfolder/file-copy.txt
+@folder_key = folder/subfolder/
+@amz_date = 20240101T000000Z
+@amz_day = 20240101
+
+@access_key = jsDyoQC1hLdI2YbdWaH0XF9JqfSmJMfZsz2iqkziXDsDuXSacYlcKbVEWwV0yY/4gkeronrBKKff1VFz3ealXiIN0Hz3ZcVAh4VXR6jq/3BnOrXQJRKbDkDuJSrwf/E
+
+# Replace this with the full Authorization header value from the Trace log:
+@auth1 = AWS4-HMAC-SHA256 Credential={{access_key}}/{{amz_day}}/{{region}}/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=REPLACE_WITH_LIVE_SIGNATURE
+@auth2 = AWS4-HMAC-SHA256 Credential=7c160aac06569d7294c33b2377fe239f/20260603/auto/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=94229d987e140ffe496af9e2658308d7d8bd293838e7e2850c3d96976042c613
+@auth = Bearer jsDyoQC1hLdI2YbdWaH0XF9JqfSmJMfZsz2iqkziXDsDuXSacYlcKbVEWwV0yY/4gkeronrBKKff1VFz3ealXiIN0Hz3ZcVAh4VXR6jq/q3BnOrXQJRKbDkDuJSrwf/E
+
+
+###############################################################################
+# 1. LIST BUCKETS
+#    GET /
+#    Verifies: credentials work, endpoint reachable, service responds with XML
+###############################################################################
+
+### List all buckets
+GET {{endpoint}}/
+x-amz-date: {{amz_date}}
+x-amz-content-sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+Authorization: {{auth}}
+
+
+###############################################################################
+# 2. LIST OBJECTS V2
+#    GET /BUCKET?list-type=2&delimiter=/
+#    Verifies: bucket accessible, folder emulation works (CommonPrefixes)
+###############################################################################
+
+### List bucket root
+GET {{endpoint}}/{{bucket}}?delimiter=/&list-type=2
+x-amz-date: {{amz_date}}
+x-amz-content-sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+Authorization: {{auth}}
+
+### List a specific folder (prefix must end with /)
+GET {{endpoint}}/{{bucket}}?delimiter=/&list-type=2&prefix=folder/subfolder/
+x-amz-date: {{amz_date}}
+x-amz-content-sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+Authorization: {{auth}}
+
+### List with pagination (continuation token from previous response)
+# GET {{endpoint}}/{{bucket}}?delimiter=/&list-type=2&continuation-token=REPLACE_TOKEN
+# x-amz-date: {{amz_date}}
+# x-amz-content-sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+# Authorization: {{auth}}
+
+
+###############################################################################
+# 3. HEAD OBJECT
+#    HEAD /BUCKET/KEY
+#    Verifies: object exists, metadata returned (content-type, size, etag)
+###############################################################################
+
+### Head object — check metadata without downloading
+HEAD {{endpoint}}/{{bucket}}/{{key}}
+x-amz-date: {{amz_date}}
+x-amz-content-sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+Authorization: {{auth}}
+
+
+###############################################################################
+# 4. GET OBJECT (Download)
+#    GET /BUCKET/KEY
+#    Verifies: object download works, streaming response
+###############################################################################
+
+### Download object
+GET {{endpoint}}/{{bucket}}/{{key}}
+x-amz-date: {{amz_date}}
+x-amz-content-sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+Authorization: {{auth}}
+
+
+###############################################################################
+# 5. PUT OBJECT (Upload)
+#    PUT /BUCKET/KEY
+#    Verifies: upload works, UNSIGNED-PAYLOAD accepted by service
+#    Note: the provider uses UNSIGNED-PAYLOAD (x-amz-content-sha256: UNSIGNED-PAYLOAD)
+#          to avoid buffering. Some services require a real SHA256 — if uploads
+#          fail with SignatureDoesNotMatch, this is the likely cause.
+###############################################################################
+
+### Upload a small text file
+PUT {{endpoint}}/{{bucket}}/{{key}}
+x-amz-date: {{amz_date}}
+x-amz-content-sha256: UNSIGNED-PAYLOAD
+Content-Type: text/plain
+Authorization: {{auth}}
+
+Hello from FAST.FileManager test upload.
+
+
+###############################################################################
+# 6. PUT FOLDER MARKER
+#    PUT /BUCKET/FOLDER/  (zero-byte, content-type: application/x-directory)
+#    Verifies: folder creation works, service accepts empty body with trailing /
+###############################################################################
+
+### Create a folder marker
+PUT {{endpoint}}/{{bucket}}/{{folder_key}}
+x-amz-date: {{amz_date}}
+x-amz-content-sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+Content-Type: application/x-directory
+Content-Length: 0
+Authorization: {{auth}}
+
+
+###############################################################################
+# 7. COPY OBJECT
+#    PUT /BUCKET/DEST-KEY  with x-amz-copy-source: /BUCKET/SOURCE-KEY
+#    Verifies: server-side copy works, x-amz-copy-source header accepted
+#    Note: some services (MinIO) require Content-Length: 0 explicitly.
+#          The copy-source header uses path-style /bucket/key encoding.
+###############################################################################
+
+### Copy object (server-side, no data transfer)
+PUT {{endpoint}}/{{bucket}}/{{dest_key}}
+x-amz-date: {{amz_date}}
+x-amz-content-sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+x-amz-copy-source: /{{bucket}}/{{source_key}}
+Content-Length: 0
+Authorization: {{auth}}
+
+
+###############################################################################
+# 8. DELETE OBJECT
+#    DELETE /BUCKET/KEY
+#    Verifies: delete works, service returns 204 No Content
+###############################################################################
+
+### Delete object
+DELETE {{endpoint}}/{{bucket}}/{{key}}
+x-amz-date: {{amz_date}}
+x-amz-content-sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+Authorization: {{auth}}
+
+
+###############################################################################
+# COMMON FAILURE PATTERNS
+# ────────────────────────
+# 403 SignatureDoesNotMatch  → Wrong AccessKey/SecretKey, wrong Region,
+#                              clock skew >5 min, double-encoded URI,
+#                              Content-Type included in SignedHeaders but
+#                              not sent (or vice versa)
+#
+# 403 InvalidAccessKeyId    → AccessKey not found — wrong account/endpoint
+#
+# 404 NoSuchBucket          → Bucket name wrong, wrong endpoint for bucket
+#
+# 400 AuthorizationHeaderMalformed
+#                           → Region mismatch (e.g. "auto" vs "us-east-1")
+#                              Try changing @region to match what the service
+#                              expects.
+#
+# 501 NotImplemented        → Service doesn't support this operation
+#                              (some MinIO versions don't support CopyObject
+#                               the same way as AWS)
+#
+# Upload fails only         → Service may not accept UNSIGNED-PAYLOAD.
+#                              Try replacing x-amz-content-sha256: UNSIGNED-PAYLOAD
+#                              with the real SHA256 of the body.
+###############################################################################

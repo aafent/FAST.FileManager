@@ -39,12 +39,14 @@ public sealed class SigV4Signer
     private readonly string _accessKey;
     private readonly string _secretKey;
     private readonly string _region;
+    private readonly bool   _useBearerAuth;
 
-    public SigV4Signer(string accessKey, string secretKey, string region)
+    public SigV4Signer(string accessKey, string secretKey, string region, bool useBearerAuth = false)
     {
-        _accessKey = accessKey;
-        _secretKey = secretKey;
-        _region = region;
+        _accessKey     = accessKey;
+        _secretKey     = secretKey;
+        _region        = region;
+        _useBearerAuth = useBearerAuth;
     }
 
     /// <summary>
@@ -64,6 +66,14 @@ public sealed class SigV4Signer
         bool unsignedPayload = false,
         DateTimeOffset? overrideNow = null)
     {
+        // ── Bearer auth short-circuit ────────────────────────────────────────
+        if (_useBearerAuth)
+        {
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", _secretKey);
+            return;
+        }
+
         var now = overrideNow ?? DateTimeOffset.UtcNow;
         var dateStamp = now.ToString("yyyyMMdd");
         var amzDate = now.ToString("yyyyMMddTHHmmssZ");

@@ -2,6 +2,7 @@ using System.Text;
 using FAST.FileManager.Abstractions;
 using FAST.FileManager.Providers.S3;
 using FAST.FileManager.SDK;
+using Microsoft.Extensions.Logging;
 
 // ── Credentials ───────────────────────────────────────────────────────────────
 // Update these before running the tester.
@@ -25,9 +26,11 @@ var options = new S3ProviderOptions
 
 IFileProvider BuildProvider()
 {
-    var signer = new SigV4Signer(options.AccessKey, options.SecretKey, options.Region);
-    var http   = new HttpClient();
-    var client = new S3Client(http, signer, options.Endpoint);
+    var signer      = new SigV4Signer(options.AccessKey, options.SecretKey, options.Region);
+    var http        = new HttpClient();
+    var loggerFactory = LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Debug));
+    var logger      = loggerFactory.CreateLogger<S3Client>();
+    var client      = new S3Client(http, signer, options.Endpoint, logger: logger);
     return new S3FileProvider(client, options);
 }
 

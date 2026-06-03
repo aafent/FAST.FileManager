@@ -1,6 +1,7 @@
 using FAST.FileManager.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace FAST.FileManager.Providers.S3;
 
@@ -65,13 +66,15 @@ public static class S3ProviderServiceCollectionExtensions
         var signer = new SigV4Signer(
             options.AccessKey,
             options.SecretKey,
-            options.Region);
+            options.Region,
+            options.UseBearerAuth);
 
         services.AddScoped<IFileProvider>(sp =>
         {
             var factory = sp.GetRequiredService<IHttpClientFactory>();
-            var http = factory.CreateClient("FileManager.S3");
-            var client = new S3Client(http, signer, options.Endpoint, options.VirtualHostedStyle);
+            var http    = factory.CreateClient("FileManager.S3");
+            var logger  = sp.GetRequiredService<ILoggerFactory>().CreateLogger<S3Client>();
+            var client  = new S3Client(http, signer, options.Endpoint, options.VirtualHostedStyle, logger);
             return new S3FileProvider(client, options);
         });
 
