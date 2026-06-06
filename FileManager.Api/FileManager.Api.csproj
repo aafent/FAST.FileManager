@@ -10,6 +10,9 @@
 
   <ItemGroup>
     <!-- S3 provider lives server-side only — credentials never reach the browser -->
+    <!-- Direct reference ensures FileManager/wwwroot static assets are served via _content/FAST.FileManager/ -->
+    <ProjectReference Include="..\FileManager\FileManager.csproj" />
+    <!-- S3 provider lives server-side only — credentials never reach the browser -->
     <ProjectReference Include="..\FileManager.Providers\FileManager.Providers.csproj" />
     <!-- Hosts the WASM app as a static client -->
     <ProjectReference Include="..\FileManager.App\FileManager.App.csproj" />

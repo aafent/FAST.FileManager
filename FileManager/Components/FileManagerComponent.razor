@@ -259,7 +259,7 @@
         if (firstRender)
         {
             _jsModule = await JS.InvokeAsync<IJSObjectReference>(
-                "import", "./FileManager.js");
+                "import", "./_content/FAST.FileManager/FileManager.js");
             _dotNetRef = DotNetObjectReference.Create(this);
             await _jsModule.InvokeVoidAsync(
                 "initSplitter",

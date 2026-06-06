@@ -1,0 +1,85 @@
+name: Publish NuGet Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Package version (e.g. 0.1.0 or 0.1.0-preview.1)'
+        required: true
+        default: '0.1.0'
+      dry_run:
+        description: 'Dry run — pack but do NOT push to NuGet.org'
+        required: true
+        type: boolean
+        default: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  publish:
+    name: Pack & Publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build (Release)
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Pack FAST.FileManager
+        run: |
+          dotnet pack FileManager/FileManager.csproj \
+            --configuration Release \
+            --no-build \
+            --output ./nupkgs \
+            /p:PackageVersion=${{ github.event.inputs.version }}
+
+      - name: Pack FAST.FileManager.Providers
+        run: |
+          dotnet pack FileManager.Providers/FileManager.Providers.csproj \
+            --configuration Release \
+            --no-build \
+            --output ./nupkgs \
+            /p:PackageVersion=${{ github.event.inputs.version }}
+
+      - name: Pack FAST.FileManager.Providers.Api
+        run: |
+          dotnet pack FileManager.Providers.Api/FileManager.Providers.Api.csproj \
+            --configuration Release \
+            --no-build \
+            --output ./nupkgs \
+            /p:PackageVersion=${{ github.event.inputs.version }}
+
+      - name: List packages
+        run: ls -la ./nupkgs/
+
+      - name: Push to NuGet.org
+        if: ${{ github.event.inputs.dry_run == 'false' }}
+        run: |
+          dotnet nuget push ./nupkgs/*.nupkg \
+            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+
+      - name: Upload packages as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages-${{ github.event.inputs.version }}
+          path: ./nupkgs/*.nupkg
+          retention-days: 30
